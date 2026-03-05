@@ -509,6 +509,43 @@ body {
   color: var(--color-black);
 }
 
+.create-form__due-placeholder {
+  color: var(--color-gray-300);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: var(--u1) 0;
+}
+
+.create-form__due-placeholder:hover {
+  color: var(--color-gray-500);
+}
+
+.create-form__due-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--u2);
+}
+
+.create-form__due-clear {
+  background: none;
+  border: none;
+  font-size: var(--font-size-feed);
+  color: var(--color-gray-400);
+  cursor: pointer;
+  padding: 0 var(--u1);
+  line-height: 1;
+}
+
+.create-form__due-clear:hover {
+  color: var(--color-black);
+}
+
+.create-form__hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-300);
+  text-align: right;
+}
+
 /* === Inline editable fields === */
 
 .editable-select {

@@ -2,10 +2,11 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ClickUpStatus } from '@/lib/types';
+import { FIELD_IDS } from '@/lib/types';
 
 interface CreateTaskFormProps {
   statuses: ClickUpStatus[];
-  onSubmit: (name: string, status: string, dueDate?: number, description?: string) => Promise<void>;
+  onSubmit: (name: string, status: string, dueDate?: number, description?: string, customFields?: Array<{ id: string; value: unknown }>) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -17,13 +18,23 @@ export function CreateTaskForm({
   const [name, setName] = useState('');
   const [status, setStatus] = useState('ai intake new requests');
   const [dueDate, setDueDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [sponsor, setSponsor] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (showDatePicker && dateInputRef.current) {
+      dateInputRef.current.focus();
+      (dateInputRef.current as unknown as { showPicker?: () => void }).showPicker?.();
+    }
+  }, [showDatePicker]);
 
   const intakeStatuses = statuses
     .filter(
@@ -44,12 +55,15 @@ export function CreateTaskForm({
         const dueDateTs = dueDate
           ? new Date(dueDate + 'T00:00:00').getTime()
           : undefined;
-        await onSubmit(trimmed, status, dueDateTs, description.trim() || undefined);
+        const customFields = sponsor.trim()
+          ? [{ id: FIELD_IDS.PROJECT_SPONSOR, value: sponsor.trim() }]
+          : undefined;
+        await onSubmit(trimmed, status, dueDateTs, description.trim() || undefined, customFields);
       } finally {
         setSubmitting(false);
       }
     },
-    [name, status, dueDate, description, onSubmit]
+    [name, status, dueDate, sponsor, description, onSubmit]
   );
 
   const handleKeyDown = useCallback(
@@ -57,8 +71,12 @@ export function CreateTaskForm({
       if (e.key === 'Escape') {
         onCancel();
       }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSubmit();
+      }
     },
-    [onCancel]
+    [onCancel, handleSubmit]
   );
 
   return (
@@ -89,13 +107,44 @@ export function CreateTaskForm({
           </option>
         ))}
       </select>
+      {showDatePicker ? (
+        <div className="create-form__due-wrapper">
+          <input
+            ref={dateInputRef}
+            className="task-tile__due-input"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            disabled={submitting}
+          />
+          <button
+            type="button"
+            className="create-form__due-clear"
+            onClick={() => {
+              setDueDate('');
+              setShowDatePicker(false);
+            }}
+            disabled={submitting}
+            title="Remove due date"
+          >
+            &times;
+          </button>
+        </div>
+      ) : (
+        <span
+          className="create-form__due-placeholder"
+          onClick={() => setShowDatePicker(true)}
+        >
+          No due date
+        </span>
+      )}
       <input
-        className="task-tile__due-input"
-        type="date"
-        value={dueDate}
-        onChange={(e) => setDueDate(e.target.value)}
+        className="create-form__input"
+        type="text"
+        placeholder="Project sponsor (optional)"
+        value={sponsor}
+        onChange={(e) => setSponsor(e.target.value)}
         disabled={submitting}
-        placeholder="Due date (optional)"
       />
       <textarea
         className="create-form__textarea"
@@ -122,6 +171,7 @@ export function CreateTaskForm({
           {submitting ? 'Creating...' : 'Create'}
         </button>
       </div>
+      <div className="create-form__hint">Ctrl/Cmd+Enter to submit &middot; Escape to cancel</div>
     </form>
   );
 }

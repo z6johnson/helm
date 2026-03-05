@@ -149,7 +149,8 @@ export async function createTask(
   status: string,
   assignees: number[],
   dueDate?: number | null,
-  description?: string
+  description?: string,
+  customFields?: Array<{ id: string; value: unknown }>
 ): Promise<ClickUpTask> {
   const listId = getListId();
   const body: Record<string, unknown> = { name, status, assignees };
@@ -158,6 +159,9 @@ export async function createTask(
   }
   if (description) {
     body.description = description;
+  }
+  if (customFields && customFields.length > 0) {
+    body.custom_fields = customFields;
   }
   return clickupFetch<ClickUpTask>(`/list/${listId}/task`, {
     method: 'POST',
