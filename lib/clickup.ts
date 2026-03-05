@@ -143,6 +143,28 @@ export async function fetchComments(
   return data.comments;
 }
 
+export async function createTask(
+  name: string,
+  status: string,
+  assignees: number[]
+): Promise<ClickUpTask> {
+  const listId = getListId();
+  return clickupFetch<ClickUpTask>(`/list/${listId}/task`, {
+    method: 'POST',
+    body: JSON.stringify({ name, status, assignees }),
+  });
+}
+
+export async function updateTaskName(
+  taskId: string,
+  name: string
+): Promise<void> {
+  await clickupFetch(`/task/${taskId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  });
+}
+
 export async function fetchListStatuses(): Promise<ClickUpStatus[]> {
   const listId = getListId();
   const data = await clickupFetch<{ statuses: ClickUpStatus[] }>(

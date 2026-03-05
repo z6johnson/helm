@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   fetchTaskById,
   updateTaskStatus,
+  updateTaskName,
   updateTaskCustomField,
 } from '@/lib/clickup';
 import { transformTask } from '@/lib/transform';
@@ -28,6 +29,10 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
+
+    if (body.name) {
+      await updateTaskName(params.id, body.name);
+    }
 
     if (body.status) {
       await updateTaskStatus(params.id, body.status);

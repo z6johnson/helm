@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCachedTasks, setCachedTasks } from '@/lib/cache';
-import { fetchFilteredTasks, fetchListStatuses, INTAKE_STATUSES, getUserId } from '@/lib/clickup';
-import { transformTasks, filterByUser } from '@/lib/transform';
+import { fetchFilteredTasks, fetchListStatuses, createTask, INTAKE_STATUSES, getUserId } from '@/lib/clickup';
+import { transformTasks, transformTask, filterByUser } from '@/lib/transform';
 import type { CachePayload } from '@/lib/types';
 
 export async function GET() {
@@ -35,6 +35,42 @@ export async function GET() {
 
     await setCachedTasks(payload);
     return NextResponse.json(payload);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    if (!body.name || typeof body.name !== 'string') {
+      return NextResponse.json(
+        { error: 'name is required' },
+        { status: 400 }
+      );
+    }
+
+    const status = body.status || 'ai intake new requests';
+    const userId = getUserId();
+    const assignees = userId ? [userId] : [];
+
+    const raw = await createTask(body.name, status, assignees);
+    const task = transformTask(raw);
+
+    // Add to cache
+    const cached = await getCachedTasks();
+    if (cached) {
+      cached.tasks.push(task);
+      cached.taskCount = cached.tasks.length;
+      await setCachedTasks(cached);
+    }
+
+    return NextResponse.json(task, { status: 201 });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Unknown error';

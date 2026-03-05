@@ -2,12 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
-import { AttentionFeed } from '@/components/AttentionFeed';
-import { PipelineView } from '@/components/PipelineView';
-import { DetailDrawer } from '@/components/DetailDrawer';
+import { TaskGrid } from '@/components/TaskGrid';
 import { StatusBar } from '@/components/StatusBar';
-import { ToastProvider } from '@/components/Toast';
-import type { DashboardTask, ClickUpStatus, CachePayload } from '@/lib/types';
+import { ToastProvider, useToast } from '@/components/Toast';
+import type { DashboardTask, CachePayload } from '@/lib/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -24,8 +22,9 @@ function countByStatus(tasks: DashboardTask[]) {
   return { new: newCount, scoping, resourcing };
 }
 
-export default function Dashboard() {
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+function DashboardInner() {
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const { showToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR<CachePayload>(
     '/api/tasks',
     fetcher,
@@ -34,14 +33,6 @@ export default function Dashboard() {
       revalidateOnFocus: false,
     }
   );
-
-  const handleSelectTask = useCallback((taskId: string) => {
-    setSelectedTaskId(taskId);
-  }, []);
-
-  const handleCloseDrawer = useCallback(() => {
-    setSelectedTaskId(null);
-  }, []);
 
   const handleSync = useCallback(async () => {
     await fetch('/api/cron/sync', { method: 'POST' });
@@ -62,7 +53,35 @@ export default function Dashboard() {
     [data, mutate]
   );
 
-  const selectedTask = data?.tasks.find((t) => t.id === selectedTaskId) ?? null;
+  const handleCreateTask = useCallback(
+    async (name: string, status: string) => {
+      try {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, status }),
+        });
+        if (!res.ok) throw new Error('Failed to create task');
+        const newTask: DashboardTask = await res.json();
+
+        if (data) {
+          mutate(
+            {
+              ...data,
+              tasks: [...data.tasks, newTask],
+              taskCount: data.taskCount + 1,
+            },
+            false
+          );
+        }
+        setShowCreateForm(false);
+      } catch {
+        showToast('Failed to create task', 'error');
+        throw new Error('Failed to create task');
+      }
+    },
+    [data, mutate, showToast]
+  );
 
   if (isLoading) {
     return (
@@ -71,20 +90,9 @@ export default function Dashboard() {
           <h1>AI Strategy Intake</h1>
         </header>
         <div className="dashboard-body">
-          <div className="panel-feed">
-            <div className="panel-header">
-              <span className="section-label">Attention Feed</span>
-            </div>
+          <div className="task-grid">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="skeleton skeleton--card" />
-            ))}
-          </div>
-          <div className="panel-pipeline">
-            <div className="panel-header">
-              <span className="section-label">Pipeline</span>
-            </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="skeleton skeleton--card" />
+              <div key={i} className="skeleton" style={{ height: 200 }} />
             ))}
           </div>
         </div>
@@ -124,10 +132,10 @@ export default function Dashboard() {
   const counts = countByStatus(tasks);
 
   return (
-    <ToastProvider>
-      <div className="dashboard">
-        <header className="dashboard-header">
-          <h1>AI Strategy Intake</h1>
+    <div className="dashboard">
+      <header className="dashboard-header">
+        <h1>AI Strategy Intake</h1>
+        <div className="header-actions">
           <div className="header-metrics">
             <span className="header-metric">
               <span className="header-metric__count">{counts.new}</span>
@@ -144,50 +152,39 @@ export default function Dashboard() {
               <span className="header-metric__label">Resourcing</span>
             </span>
           </div>
-        </header>
-        <div className="dashboard-body">
-          <div className="panel-feed">
-            <div className="panel-header">
-              <span className="section-label">Attention Feed</span>
-            </div>
-            <AttentionFeed tasks={tasks} onSelectTask={handleSelectTask} />
-          </div>
-          <div className="panel-pipeline">
-            <div className="panel-header">
-              <span className="section-label">Pipeline</span>
-            </div>
-            <PipelineView
-              tasks={tasks}
-              statuses={statuses}
-              onSelectTask={handleSelectTask}
-              onStatusChange={handleTaskUpdate}
-            />
-          </div>
+          <button
+            className="btn btn--primary"
+            onClick={() => setShowCreateForm(true)}
+            disabled={showCreateForm}
+          >
+            + New Task
+          </button>
         </div>
-        <StatusBar
-          lastSynced={data?.lastSynced ?? null}
-          taskCount={tasks.length}
-          syncing={false}
-          onSync={handleSync}
-        />
-        <DetailDrawer
-          task={selectedTask}
+      </header>
+      <div className="dashboard-body">
+        <TaskGrid
+          tasks={tasks}
           statuses={statuses}
-          onClose={handleCloseDrawer}
+          showCreateForm={showCreateForm}
           onTaskUpdate={handleTaskUpdate}
+          onCreateTask={handleCreateTask}
+          onCancelCreate={() => setShowCreateForm(false)}
         />
       </div>
-    </ToastProvider>
+      <StatusBar
+        lastSynced={data?.lastSynced ?? null}
+        taskCount={tasks.length}
+        syncing={false}
+        onSync={handleSync}
+      />
+    </div>
   );
 }
 
-function formatRelativeTime(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+export default function Dashboard() {
+  return (
+    <ToastProvider>
+      <DashboardInner />
+    </ToastProvider>
+  );
 }
