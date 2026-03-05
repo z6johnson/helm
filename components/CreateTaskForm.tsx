@@ -5,7 +5,7 @@ import type { ClickUpStatus } from '@/lib/types';
 
 interface CreateTaskFormProps {
   statuses: ClickUpStatus[];
-  onSubmit: (name: string, status: string, dueDate?: number) => Promise<void>;
+  onSubmit: (name: string, status: string, dueDate?: number, description?: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -17,6 +17,7 @@ export function CreateTaskForm({
   const [name, setName] = useState('');
   const [status, setStatus] = useState('ai intake new requests');
   const [dueDate, setDueDate] = useState('');
+  const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,12 +44,12 @@ export function CreateTaskForm({
         const dueDateTs = dueDate
           ? new Date(dueDate + 'T00:00:00').getTime()
           : undefined;
-        await onSubmit(trimmed, status, dueDateTs);
+        await onSubmit(trimmed, status, dueDateTs, description.trim() || undefined);
       } finally {
         setSubmitting(false);
       }
     },
-    [name, status, dueDate, onSubmit]
+    [name, status, dueDate, description, onSubmit]
   );
 
   const handleKeyDown = useCallback(
@@ -95,6 +96,14 @@ export function CreateTaskForm({
         onChange={(e) => setDueDate(e.target.value)}
         disabled={submitting}
         placeholder="Due date (optional)"
+      />
+      <textarea
+        className="create-form__textarea"
+        placeholder="Description (optional)"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        disabled={submitting}
+        rows={3}
       />
       <div className="create-form__actions">
         <button

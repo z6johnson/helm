@@ -19,6 +19,8 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
   const [editingDueDate, setEditingDueDate] = useState(false);
   const [editingSponsor, setEditingSponsor] = useState(false);
   const [sponsorValue, setSponsorValue] = useState('');
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionValue, setDescriptionValue] = useState(task.description);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<ClickUpComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -26,6 +28,7 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const dueDateInputRef = useRef<HTMLInputElement>(null);
   const sponsorInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -52,6 +55,16 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
       sponsorInputRef.current.select();
     }
   }, [editingSponsor]);
+
+  useEffect(() => {
+    setDescriptionValue(task.description);
+  }, [task.description]);
+
+  useEffect(() => {
+    if (editingDescription && descriptionRef.current) {
+      descriptionRef.current.focus();
+    }
+  }, [editingDescription]);
 
   const handleNameSave = useCallback(async () => {
     setEditingName(false);
@@ -200,6 +213,41 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
     [handleSponsorSave]
   );
 
+  const handleDescriptionSave = useCallback(async () => {
+    setEditingDescription(false);
+    const trimmed = descriptionValue.trim();
+    if (trimmed === task.description) return;
+
+    const updatedTask = { ...task, description: trimmed };
+    onTaskUpdate(updatedTask);
+
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: trimmed }),
+      });
+      if (!res.ok) throw new Error('Failed to update description');
+    } catch {
+      onTaskUpdate(task);
+      setDescriptionValue(task.description);
+      showToast('Failed to update description', 'error');
+    }
+  }, [descriptionValue, task, onTaskUpdate, showToast]);
+
+  const handleDescriptionKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleDescriptionSave();
+      } else if (e.key === 'Escape') {
+        setEditingDescription(false);
+        setDescriptionValue(task.description);
+      }
+    },
+    [handleDescriptionSave, task.description]
+  );
+
   const toggleComments = useCallback(() => {
     const opening = !commentsOpen;
     setCommentsOpen(opening);
@@ -335,6 +383,35 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
             title="Click to edit sponsor"
           >
             {sponsorDisplay || 'None'}
+          </span>
+        )}
+      </div>
+
+      {/* Description */}
+      <div className="task-tile__field">
+        <span className="field-label">Description</span>
+        {editingDescription ? (
+          <textarea
+            ref={descriptionRef}
+            className="task-tile__desc-textarea"
+            value={descriptionValue}
+            onChange={(e) => setDescriptionValue(e.target.value)}
+            onBlur={handleDescriptionSave}
+            onKeyDown={handleDescriptionKeyDown}
+            placeholder="Enter description..."
+            rows={3}
+          />
+        ) : (
+          <span
+            className={`task-tile__field-value ${!task.description ? 'task-tile__field-value--empty' : ''}`}
+            onClick={() => {
+              setDescriptionValue(task.description);
+              setEditingDescription(true);
+            }}
+            style={{ cursor: 'pointer', whiteSpace: 'pre-wrap' }}
+            title="Click to edit description"
+          >
+            {task.description || 'None'}
           </span>
         )}
       </div>

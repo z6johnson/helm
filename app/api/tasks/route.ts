@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
     const assignees = userId ? [userId] : [];
 
     const dueDate = body.due_date != null ? Number(body.due_date) : undefined;
-    const raw = await createTask(body.name, status, assignees, dueDate);
+    const description = typeof body.description === 'string' ? body.description : undefined;
+    const raw = await createTask(body.name, status, assignees, dueDate, description);
     const task = transformTask(raw);
 
     // Add to cache
