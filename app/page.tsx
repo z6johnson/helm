@@ -11,6 +11,19 @@ import type { DashboardTask, ClickUpStatus, CachePayload } from '@/lib/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+function countByStatus(tasks: DashboardTask[]) {
+  let newCount = 0;
+  let scoping = 0;
+  let resourcing = 0;
+  for (const t of tasks) {
+    const s = t.status.toLowerCase();
+    if (s.includes('new')) newCount++;
+    else if (s.includes('scoping')) scoping++;
+    else if (s.includes('resourcing')) resourcing++;
+  }
+  return { new: newCount, scoping, resourcing };
+}
+
 export default function Dashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const { data, error, isLoading, mutate } = useSWR<CachePayload>(
@@ -108,17 +121,29 @@ export default function Dashboard() {
 
   const tasks = data?.tasks ?? [];
   const statuses = data?.statuses ?? [];
+  const counts = countByStatus(tasks);
 
   return (
     <ToastProvider>
       <div className="dashboard">
         <header className="dashboard-header">
           <h1>AI Strategy Intake</h1>
-          <span className="sync-info">
-            {data?.lastSynced
-              ? `Last sync: ${formatRelativeTime(data.lastSynced)}`
-              : ''}
-          </span>
+          <div className="header-metrics">
+            <span className="header-metric">
+              <span className="header-metric__count">{counts.new}</span>
+              <span className="header-metric__label">New</span>
+            </span>
+            <span className="header-metric__sep">&middot;</span>
+            <span className="header-metric">
+              <span className="header-metric__count">{counts.scoping}</span>
+              <span className="header-metric__label">Scoping</span>
+            </span>
+            <span className="header-metric__sep">&middot;</span>
+            <span className="header-metric">
+              <span className="header-metric__count">{counts.resourcing}</span>
+              <span className="header-metric__label">Resourcing</span>
+            </span>
+          </div>
         </header>
         <div className="dashboard-body">
           <div className="panel-feed">

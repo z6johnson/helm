@@ -6,6 +6,12 @@ import type {
 
 const BASE_URL = 'https://api.clickup.com/api/v2';
 
+export const INTAKE_STATUSES = [
+  'ai intake new requests',
+  'ai intake scoping',
+  'ai intake resourcing',
+];
+
 function getToken(): string {
   const token = process.env.CLICKUP_API_TOKEN;
   if (!token) throw new Error('CLICKUP_API_TOKEN is not set');
@@ -14,6 +20,11 @@ function getToken(): string {
 
 function getListId(): string {
   return process.env.CLICKUP_LIST_ID || '901414062168';
+}
+
+export function getUserId(): number | undefined {
+  const id = process.env.CLICKUP_USER_ID;
+  return id ? Number(id) : undefined;
 }
 
 async function clickupFetch<T>(
@@ -49,6 +60,33 @@ export async function fetchAllTasks(): Promise<ClickUpTask[]> {
   while (hasMore) {
     const data = await clickupFetch<{ tasks: ClickUpTask[] }>(
       `/list/${listId}/task?include_closed=true&subtasks=false&page=${page}`
+    );
+    allTasks.push(...data.tasks);
+    hasMore = data.tasks.length === 100;
+    page++;
+  }
+
+  return allTasks;
+}
+
+export async function fetchFilteredTasks(
+  statuses: string[]
+): Promise<ClickUpTask[]> {
+  const listId = getListId();
+  const allTasks: ClickUpTask[] = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const params = new URLSearchParams();
+    params.append('subtasks', 'false');
+    params.append('page', String(page));
+    for (const status of statuses) {
+      params.append('statuses[]', status);
+    }
+
+    const data = await clickupFetch<{ tasks: ClickUpTask[] }>(
+      `/list/${listId}/task?${params.toString()}`
     );
     allTasks.push(...data.tasks);
     hasMore = data.tasks.length === 100;
