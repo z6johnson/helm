@@ -148,12 +148,16 @@ export async function createTask(
   name: string,
   status: string,
   assignees: number[],
-  dueDate?: number | null
+  dueDate?: number | null,
+  description?: string
 ): Promise<ClickUpTask> {
   const listId = getListId();
   const body: Record<string, unknown> = { name, status, assignees };
   if (dueDate != null) {
     body.due_date = dueDate;
+  }
+  if (description) {
+    body.description = description;
   }
   return clickupFetch<ClickUpTask>(`/list/${listId}/task`, {
     method: 'POST',
@@ -178,6 +182,16 @@ export async function updateTaskDueDate(
   await clickupFetch(`/task/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify({ due_date: dueDate }),
+  });
+}
+
+export async function updateTaskDescription(
+  taskId: string,
+  description: string
+): Promise<void> {
+  await clickupFetch(`/task/${taskId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ description }),
   });
 }
 

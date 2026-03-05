@@ -54,10 +54,11 @@ function DashboardInner() {
   );
 
   const handleCreateTask = useCallback(
-    async (name: string, status: string, dueDate?: number) => {
+    async (name: string, status: string, dueDate?: number, description?: string) => {
       try {
         const body: Record<string, unknown> = { name, status };
         if (dueDate != null) body.due_date = dueDate;
+        if (description) body.description = description;
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
