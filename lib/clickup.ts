@@ -10,6 +10,7 @@ export const INTAKE_STATUSES = [
   'ai intake new requests',
   'ai intake scoping',
   'ai intake resourcing',
+  'ai intake accepted',
 ];
 
 function getToken(): string {
@@ -146,12 +147,17 @@ export async function fetchComments(
 export async function createTask(
   name: string,
   status: string,
-  assignees: number[]
+  assignees: number[],
+  dueDate?: number | null
 ): Promise<ClickUpTask> {
   const listId = getListId();
+  const body: Record<string, unknown> = { name, status, assignees };
+  if (dueDate != null) {
+    body.due_date = dueDate;
+  }
   return clickupFetch<ClickUpTask>(`/list/${listId}/task`, {
     method: 'POST',
-    body: JSON.stringify({ name, status, assignees }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -162,6 +168,16 @@ export async function updateTaskName(
   await clickupFetch(`/task/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify({ name }),
+  });
+}
+
+export async function updateTaskDueDate(
+  taskId: string,
+  dueDate: number | null
+): Promise<void> {
+  await clickupFetch(`/task/${taskId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ due_date: dueDate }),
   });
 }
 

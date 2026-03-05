@@ -16,11 +16,16 @@ interface TaskTileProps {
 export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(task.name);
+  const [editingDueDate, setEditingDueDate] = useState(false);
+  const [editingSponsor, setEditingSponsor] = useState(false);
+  const [sponsorValue, setSponsorValue] = useState('');
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<ClickUpComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentsFetched, setCommentsFetched] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const dueDateInputRef = useRef<HTMLInputElement>(null);
+  const sponsorInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -33,6 +38,20 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
       nameInputRef.current.select();
     }
   }, [editingName]);
+
+  useEffect(() => {
+    if (editingDueDate && dueDateInputRef.current) {
+      dueDateInputRef.current.showPicker?.();
+      dueDateInputRef.current.focus();
+    }
+  }, [editingDueDate]);
+
+  useEffect(() => {
+    if (editingSponsor && sponsorInputRef.current) {
+      sponsorInputRef.current.focus();
+      sponsorInputRef.current.select();
+    }
+  }, [editingSponsor]);
 
   const handleNameSave = useCallback(async () => {
     setEditingName(false);
@@ -100,6 +119,87 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
     [task, statuses, onTaskUpdate, showToast]
   );
 
+  const handleDueDateChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEditingDueDate(false);
+      const val = e.target.value;
+      const newDueDate = val ? new Date(val + 'T00:00:00').getTime() : null;
+
+      if (newDueDate === task.dueDate) return;
+
+      const updatedTask = { ...task, dueDate: newDueDate };
+      onTaskUpdate(updatedTask);
+
+      try {
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ due_date: newDueDate }),
+        });
+        if (!res.ok) throw new Error('Failed to update due date');
+      } catch {
+        onTaskUpdate(task);
+        showToast('Failed to update due date', 'error');
+      }
+    },
+    [task, onTaskUpdate, showToast]
+  );
+
+  const handleSponsorSave = useCallback(async () => {
+    setEditingSponsor(false);
+    const trimmed = sponsorValue.trim();
+    const currentDisplay =
+      typeof sponsor?.value === 'string'
+        ? sponsor.value
+        : Array.isArray(sponsor?.value)
+          ? (sponsor.value as string[]).join(', ')
+          : '';
+
+    if (trimmed === currentDisplay) return;
+
+    const updatedFields = { ...task.customFields };
+    updatedFields[FIELD_IDS.PROJECT_SPONSOR] = {
+      ...(updatedFields[FIELD_IDS.PROJECT_SPONSOR] || {
+        id: FIELD_IDS.PROJECT_SPONSOR,
+        name: 'Project Sponsor',
+        type: 'short_text',
+        rawValue: null,
+      }),
+      value: trimmed || null,
+    };
+    const updatedTask = { ...task, customFields: updatedFields };
+    onTaskUpdate(updatedTask);
+
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customField: {
+            id: FIELD_IDS.PROJECT_SPONSOR,
+            value: trimmed || null,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update sponsor');
+    } catch {
+      onTaskUpdate(task);
+      showToast('Failed to update sponsor', 'error');
+    }
+  }, [sponsorValue, task, onTaskUpdate, showToast]);
+
+  const handleSponsorKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSponsorSave();
+      } else if (e.key === 'Escape') {
+        setEditingSponsor(false);
+      }
+    },
+    [handleSponsorSave]
+  );
+
   const toggleComments = useCallback(() => {
     const opening = !commentsOpen;
     setCommentsOpen(opening);
@@ -125,13 +225,17 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
   }, [task.id]);
 
   const sponsor = task.customFields[FIELD_IDS.PROJECT_SPONSOR];
-  const sponsorValue = sponsor?.value;
+  const sponsorRawValue = sponsor?.value;
   const sponsorDisplay =
-    typeof sponsorValue === 'string'
-      ? sponsorValue
-      : Array.isArray(sponsorValue)
-        ? sponsorValue.join(', ')
+    typeof sponsorRawValue === 'string'
+      ? sponsorRawValue
+      : Array.isArray(sponsorRawValue)
+        ? sponsorRawValue.join(', ')
         : null;
+
+  const dueDateISO = task.dueDate
+    ? new Date(task.dueDate).toISOString().split('T')[0]
+    : '';
 
   const isOverdue = task.dueDate !== null && task.dueDate < Date.now();
 
@@ -183,24 +287,57 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
             </option>
           ))}
         </select>
-        <span
-          className={`task-tile__due ${isOverdue ? 'task-tile__due--overdue' : ''}`}
-        >
-          {task.dueDate
-            ? new Date(task.dueDate).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })
-            : 'No due date'}
-        </span>
+        {editingDueDate ? (
+          <input
+            ref={dueDateInputRef}
+            className="task-tile__due-input"
+            type="date"
+            defaultValue={dueDateISO}
+            onChange={handleDueDateChange}
+            onBlur={() => setEditingDueDate(false)}
+          />
+        ) : (
+          <span
+            className={`task-tile__due task-tile__due--editable ${isOverdue ? 'task-tile__due--overdue' : ''}`}
+            onClick={() => setEditingDueDate(true)}
+            title="Click to edit due date"
+          >
+            {task.dueDate
+              ? new Date(task.dueDate).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : 'No due date'}
+          </span>
+        )}
       </div>
 
       {/* Project Sponsor */}
       <div className="task-tile__field">
         <span className="field-label">Sponsor</span>
-        <span className={`task-tile__field-value ${!sponsorDisplay ? 'task-tile__field-value--empty' : ''}`}>
-          {sponsorDisplay || 'None'}
-        </span>
+        {editingSponsor ? (
+          <input
+            ref={sponsorInputRef}
+            className="editable-input"
+            value={sponsorValue}
+            onChange={(e) => setSponsorValue(e.target.value)}
+            onBlur={handleSponsorSave}
+            onKeyDown={handleSponsorKeyDown}
+            placeholder="Enter sponsor..."
+          />
+        ) : (
+          <span
+            className={`task-tile__field-value ${!sponsorDisplay ? 'task-tile__field-value--empty' : ''}`}
+            onClick={() => {
+              setSponsorValue(sponsorDisplay || '');
+              setEditingSponsor(true);
+            }}
+            style={{ cursor: 'pointer' }}
+            title="Click to edit sponsor"
+          >
+            {sponsorDisplay || 'None'}
+          </span>
+        )}
       </div>
 
       {/* Comments */}

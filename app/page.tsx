@@ -54,12 +54,14 @@ function DashboardInner() {
   );
 
   const handleCreateTask = useCallback(
-    async (name: string, status: string) => {
+    async (name: string, status: string, dueDate?: number) => {
       try {
+        const body: Record<string, unknown> = { name, status };
+        if (dueDate != null) body.due_date = dueDate;
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, status }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error('Failed to create task');
         const newTask: DashboardTask = await res.json();

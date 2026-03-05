@@ -5,7 +5,7 @@ import type { ClickUpStatus } from '@/lib/types';
 
 interface CreateTaskFormProps {
   statuses: ClickUpStatus[];
-  onSubmit: (name: string, status: string) => Promise<void>;
+  onSubmit: (name: string, status: string, dueDate?: number) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -16,6 +16,7 @@ export function CreateTaskForm({
 }: CreateTaskFormProps) {
   const [name, setName] = useState('');
   const [status, setStatus] = useState('ai intake new requests');
+  const [dueDate, setDueDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -39,12 +40,15 @@ export function CreateTaskForm({
 
       setSubmitting(true);
       try {
-        await onSubmit(trimmed, status);
+        const dueDateTs = dueDate
+          ? new Date(dueDate + 'T00:00:00').getTime()
+          : undefined;
+        await onSubmit(trimmed, status, dueDateTs);
       } finally {
         setSubmitting(false);
       }
     },
-    [name, status, onSubmit]
+    [name, status, dueDate, onSubmit]
   );
 
   const handleKeyDown = useCallback(
@@ -84,6 +88,14 @@ export function CreateTaskForm({
           </option>
         ))}
       </select>
+      <input
+        className="task-tile__due-input"
+        type="date"
+        value={dueDate}
+        onChange={(e) => setDueDate(e.target.value)}
+        disabled={submitting}
+        placeholder="Due date (optional)"
+      />
       <div className="create-form__actions">
         <button
           type="button"

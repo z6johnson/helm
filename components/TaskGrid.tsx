@@ -9,7 +9,7 @@ interface TaskGridProps {
   statuses: ClickUpStatus[];
   showCreateForm: boolean;
   onTaskUpdate: (task: DashboardTask) => void;
-  onCreateTask: (name: string, status: string) => Promise<void>;
+  onCreateTask: (name: string, status: string, dueDate?: number) => Promise<void>;
   onCancelCreate: () => void;
 }
 
