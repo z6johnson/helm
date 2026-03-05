@@ -54,7 +54,7 @@ export function CommentInput({ taskId, onCommentAdded }: CommentInputProps) {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={submitting}
-        rows={3}
+        rows={1}
       />
       <div className="comment-input__actions">
         <span className="comment-input__hint">Cmd+Enter to submit</span>

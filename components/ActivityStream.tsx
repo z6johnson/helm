@@ -25,7 +25,7 @@ export function ActivityStream({ comments, loading }: ActivityStreamProps) {
   }
 
   if (comments.length === 0) {
-    return <div className="empty-state" style={{ height: 80 }}>No activity recorded</div>;
+    return <div className="empty-state" style={{ height: 48, fontSize: 'var(--font-size-xs)' }}>No comments yet</div>;
   }
 
   // Show oldest first (most recent at bottom)
