@@ -36,7 +36,6 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       <div className="task-card__meta">
         <span
           className="task-card__status"
-          style={{ color: task.statusColor }}
         >
           {task.status}
         </span>

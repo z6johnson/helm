@@ -30,8 +30,8 @@
   --color-true-white: #ffffff;
 
   /* Accent: urgency only */
-  --color-accent: #c13a3a;
-  --color-accent-bg: rgba(193, 58, 58, 0.07);
+  --color-accent: var(--color-gray-700);
+  --color-accent-bg: rgba(61, 61, 61, 0.07);
 
   /* Typography — wide contrast scale */
   --font-sans: 'Albert Sans', 'Helvetica Neue', 'Arial', sans-serif;
@@ -678,7 +678,7 @@ body {
 }
 
 .status-bar__dot--ok {
-  background: #2d8a4e;
+  background: var(--color-gray-700);
 }
 
 .status-bar__dot--syncing {

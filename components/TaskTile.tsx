@@ -250,7 +250,6 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
   return (
     <div
       className="task-tile"
-      style={{ '--status-color': task.statusColor } as React.CSSProperties}
     >
       {/* Task Name */}
       <div className="task-tile__name-wrap">
