@@ -8,8 +8,13 @@ import {
   type DropResult,
 } from '@hello-pangea/dnd';
 import type { DashboardTask, ClickUpStatus } from '@/lib/types';
-import { FIELD_IDS } from '@/lib/types';
 import { useToast } from './Toast';
+
+const INTAKE_STATUS_NAMES = [
+  'ai intake new requests',
+  'ai intake scoping',
+  'ai intake resourcing',
+];
 
 interface PipelineViewProps {
   tasks: DashboardTask[];
@@ -27,7 +32,13 @@ export function PipelineView({
   const { showToast } = useToast();
 
   const sortedStatuses = [...statuses]
-    .filter((s) => s.type !== 'closed')
+    .filter(
+      (s) =>
+        s.type !== 'closed' &&
+        INTAKE_STATUS_NAMES.some(
+          (is) => is === s.status.toLowerCase()
+        )
+    )
     .sort((a, b) => a.orderindex - b.orderindex);
 
   const tasksByStatus = new Map<string, DashboardTask[]>();
@@ -39,7 +50,6 @@ export function PipelineView({
     if (group) {
       group.push(task);
     } else {
-      // Task has a status not in our list; add to first group
       const first = sortedStatuses[0];
       if (first) {
         tasksByStatus.get(first.status)?.push(task);
@@ -47,7 +57,6 @@ export function PipelineView({
     }
   }
 
-  // Sort tasks within each group alphabetically
   Array.from(tasksByStatus.values()).forEach((group) => {
     group.sort((a, b) => a.name.localeCompare(b.name));
   });
@@ -66,7 +75,6 @@ export function PipelineView({
         (s) => s.status === newStatus
       );
 
-      // Optimistic update
       const updatedTask: DashboardTask = {
         ...task,
         status: newStatus,
@@ -75,7 +83,6 @@ export function PipelineView({
       };
       onStatusChange(updatedTask);
 
-      // Persist to API
       try {
         const res = await fetch(`/api/tasks/${task.id}`, {
           method: 'PATCH',
@@ -84,7 +91,6 @@ export function PipelineView({
         });
         if (!res.ok) throw new Error('Failed to update status');
       } catch {
-        // Rollback
         onStatusChange(task);
         showToast('Failed to update task status', 'error');
       }
@@ -106,15 +112,9 @@ export function PipelineView({
                 className="pipeline-group"
               >
                 <div className="pipeline-group__header">
-                  <div>
-                    <span
-                      className="pipeline-group__status-dot"
-                      style={{ backgroundColor: status.color }}
-                    />
-                    <span className="pipeline-group__name">
-                      {status.status}
-                    </span>
-                  </div>
+                  <span className="pipeline-group__name">
+                    {status.status}
+                  </span>
                   <span className="mono-count">{groupTasks.length}</span>
                 </div>
                 {groupTasks.length === 0 ? (
@@ -128,30 +128,19 @@ export function PipelineView({
                       index={index}
                       key={task.id}
                     >
-                      {(dragProvided) => {
-                        const detail =
-                          task.customFields[FIELD_IDS.VC_AREA_ORG]?.value ||
-                          task.customFields[FIELD_IDS.TYPE_OF_PROJECT]?.value;
-
-                        return (
-                          <div
-                            ref={dragProvided.innerRef}
-                            {...dragProvided.draggableProps}
-                            {...dragProvided.dragHandleProps}
-                            className="pipeline-item"
-                            onClick={() => onSelectTask(task.id)}
-                          >
-                            <span className="pipeline-item__name">
-                              {task.name}
-                            </span>
-                            {detail && typeof detail === 'string' && (
-                              <span className="pipeline-item__detail">
-                                {detail}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      }}
+                      {(dragProvided) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className="pipeline-item"
+                          onClick={() => onSelectTask(task.id)}
+                        >
+                          <span className="pipeline-item__name">
+                            {task.name}
+                          </span>
+                        </div>
+                      )}
                     </Draggable>
                   ))
                 )}

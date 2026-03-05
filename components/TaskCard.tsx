@@ -10,14 +10,18 @@ interface TaskCardProps {
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const isStale = task.staleDays >= 14;
-  const vcArea = task.customFields[FIELD_IDS.VC_AREA_ORG]?.value;
   const requester =
     task.customFields[FIELD_IDS.PROJECT_SPONSOR]?.value ||
     task.customFields[FIELD_IDS.REQUESTER_NAME]?.value;
 
+  const daysUntilDue = task.dueDate
+    ? Math.floor((task.dueDate - Date.now()) / 86400000)
+    : null;
+  const showDue = daysUntilDue !== null && daysUntilDue <= 7;
+
   return (
     <div
-      className={`task-card ${isStale ? 'task-card--stale' : ''}`}
+      className="task-card"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -39,35 +43,17 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         {requester && typeof requester === 'string' && (
           <span>{requester}</span>
         )}
-        {vcArea && typeof vcArea === 'string' && <span>{vcArea}</span>}
         <span className={isStale ? 'task-card__stale' : ''}>
           {formatAge(task.staleDays)}
         </span>
-        {task.dueDate && (
+        {showDue && (
           <span
-            className={
-              task.dueDate < Date.now() ? 'task-card__stale' : ''
-            }
+            className={`task-card__due ${daysUntilDue < 0 ? 'task-card__stale' : ''}`}
           >
-            Due {formatDueDate(task.dueDate)}
+            {formatDueDate(task.dueDate!)}
           </span>
         )}
       </div>
-      {task.attentionReasons.length > 0 && (
-        <div className="task-card__meta" style={{ marginTop: 4 }}>
-          {task.attentionReasons.map((reason, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: 'var(--font-size-xs)',
-                color: 'var(--color-gray-400)',
-              }}
-            >
-              {reason}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -83,7 +69,7 @@ function formatAge(days: number): string {
 function formatDueDate(timestamp: number): string {
   const days = Math.floor((timestamp - Date.now()) / 86400000);
   if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return 'today';
-  if (days === 1) return 'tomorrow';
-  return `in ${days}d`;
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  return `Due in ${days}d`;
 }

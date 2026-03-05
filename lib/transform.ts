@@ -12,6 +12,17 @@ export function transformTasks(raw: ClickUpTask[]): DashboardTask[] {
   return raw.map(transformTask);
 }
 
+export function filterByUser(
+  tasks: DashboardTask[],
+  userId: number
+): DashboardTask[] {
+  return tasks.filter(
+    (t) =>
+      t.creator.id === userId ||
+      t.assignees.some((a) => a.id === userId)
+  );
+}
+
 export function transformTask(raw: ClickUpTask): DashboardTask {
   const dateUpdated = Number(raw.date_updated);
   const staleDays = Math.floor((Date.now() - dateUpdated) / 86400000);
