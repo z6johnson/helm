@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import useSWR from 'swr';
 import { TaskGrid } from '@/components/TaskGrid';
 import { StatusBar } from '@/components/StatusBar';
@@ -54,11 +54,12 @@ function DashboardInner() {
   );
 
   const handleCreateTask = useCallback(
-    async (name: string, status: string, dueDate?: number, description?: string) => {
+    async (name: string, status: string, dueDate?: number, description?: string, customFields?: Array<{ id: string; value: unknown }>) => {
       try {
         const body: Record<string, unknown> = { name, status };
         if (dueDate != null) body.due_date = dueDate;
         if (description) body.description = description;
+        if (customFields) body.custom_fields = customFields;
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -85,6 +86,25 @@ function DashboardInner() {
     },
     [data, mutate, showToast]
   );
+
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+          (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        setShowCreateForm(true);
+      }
+      if (e.key === 'Escape') {
+        setShowCreateForm(false);
+      }
+    }
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   if (isLoading) {
     return (

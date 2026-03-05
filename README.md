@@ -72,6 +72,16 @@ Persistent footer showing:
 - Total task count
 - "Sync now" button
 
+### Keyboard Shortcuts
+
+| Shortcut | Context | Action |
+|---|---|---|
+| `N` | Dashboard (not in input) | Open new task form |
+| `Escape` | Anywhere | Cancel / close form |
+| `Ctrl/Cmd + Enter` | Create form | Submit the form |
+| `Enter` | Editing task name / sponsor | Save |
+| `Ctrl/Cmd + Enter` | Comment input | Submit comment |
+
 ### Authentication
 
 Single shared-password login. On success, an `httpOnly` cookie (`helm-auth`) is set for 30 days. All pages and API routes (except `/login` and `/api/auth`) are protected by Next.js middleware. Cron endpoints are exempted from cookie auth and validated separately via `CRON_SECRET`.
