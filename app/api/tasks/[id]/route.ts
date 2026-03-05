@@ -4,6 +4,7 @@ import {
   updateTaskStatus,
   updateTaskName,
   updateTaskCustomField,
+  updateTaskDueDate,
 } from '@/lib/clickup';
 import { transformTask } from '@/lib/transform';
 import { getCachedTasks, setCachedTasks } from '@/lib/cache';
@@ -36,6 +37,10 @@ export async function PATCH(
 
     if (body.status) {
       await updateTaskStatus(params.id, body.status);
+    }
+
+    if (body.due_date !== undefined) {
+      await updateTaskDueDate(params.id, body.due_date);
     }
 
     if (body.customField) {
