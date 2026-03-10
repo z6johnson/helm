@@ -5,11 +5,16 @@ import type {
   DashboardTask,
   NormalizedField,
   PickedUser,
+  TaskSource,
 } from './types';
 import { computeAttentionScore } from './scoring';
 
-export function transformTasks(raw: ClickUpTask[]): DashboardTask[] {
-  return raw.map(transformTask);
+export function transformTasks(
+  raw: ClickUpTask[],
+  source: TaskSource = 'intake',
+  sourceList?: string
+): DashboardTask[] {
+  return raw.map((r) => transformTask(r, source, sourceList));
 }
 
 export function filterByUser(
@@ -23,7 +28,11 @@ export function filterByUser(
   );
 }
 
-export function transformTask(raw: ClickUpTask): DashboardTask {
+export function transformTask(
+  raw: ClickUpTask,
+  source: TaskSource = 'intake',
+  sourceList?: string
+): DashboardTask {
   const dateUpdated = Number(raw.date_updated);
   const staleDays = Math.floor((Date.now() - dateUpdated) / 86400000);
 
@@ -44,6 +53,8 @@ export function transformTask(raw: ClickUpTask): DashboardTask {
     staleDays,
     attentionScore: 0,
     attentionReasons: [],
+    source,
+    sourceList,
   };
 
   const { score, reasons } = computeAttentionScore(task);

@@ -81,6 +81,8 @@ export interface NormalizedField {
   options?: ClickUpDropdownOption[];
 }
 
+export type TaskSource = 'intake' | 'programs';
+
 export interface DashboardTask {
   id: string;
   name: string;
@@ -98,6 +100,8 @@ export interface DashboardTask {
   staleDays: number;
   attentionScore: number;
   attentionReasons: string[];
+  source: TaskSource;
+  sourceList?: string;
 }
 
 // === Cache Types ===
@@ -108,7 +112,29 @@ export interface CachePayload {
   lastSynced: number;
   syncDuration: number;
   taskCount: number;
+  intakeCount: number;
+  programsCount: number;
 }
+
+export interface AiOcmListMap {
+  roadshows: string;
+  widget: string;
+  ucopAiCouncil: string;
+}
+
+export type AiOcmCategory = keyof AiOcmListMap;
+
+export const AI_OCM_CATEGORIES: Record<AiOcmCategory, string> = {
+  roadshows: 'Roadshows',
+  widget: 'Widget',
+  ucopAiCouncil: 'UCOP AI Council',
+};
+
+export const AI_OCM_KEYWORDS: Record<AiOcmCategory, string[]> = {
+  roadshows: ['presentation', 'workshop', 'roadshow', 'training', 'demo', 'session', 'seminar'],
+  widget: ['development', 'gems', 'custom assistant', 'ai tools', 'build', 'code', 'app', 'application', 'tool', 'assistant'],
+  ucopAiCouncil: ['ucop', 'system', 'uc level', 'systemwide', 'council', 'uc system', 'systemwide'],
+};
 
 export interface SyncResult {
   success: boolean;

@@ -3,6 +3,8 @@
 interface StatusBarProps {
   lastSynced: number | null;
   taskCount: number;
+  intakeCount?: number;
+  programsCount?: number;
   syncing: boolean;
   onSync: () => void;
 }
@@ -10,12 +12,19 @@ interface StatusBarProps {
 export function StatusBar({
   lastSynced,
   taskCount,
+  intakeCount,
+  programsCount,
   syncing,
   onSync,
 }: StatusBarProps) {
   const syncText = lastSynced
     ? `Last sync: ${formatRelativeTime(lastSynced)}`
     : 'Not synced';
+
+  const hasBreakdown = intakeCount != null && programsCount != null && programsCount > 0;
+  const countText = hasBreakdown
+    ? `${taskCount} tasks (${intakeCount} intake, ${programsCount} programs)`
+    : `${taskCount} tasks`;
 
   return (
     <div className="status-bar">
@@ -30,7 +39,7 @@ export function StatusBar({
           }`}
         />
         <span>{syncText}</span>
-        <span>{taskCount} tasks</span>
+        <span>{countText}</span>
       </div>
       <button
         className="status-bar__sync-btn"

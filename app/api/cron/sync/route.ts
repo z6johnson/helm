@@ -1,36 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchFilteredTasks, fetchListStatuses, INTAKE_STATUSES, getUserId } from '@/lib/clickup';
-import { transformTasks, filterByUser } from '@/lib/transform';
 import { setCachedTasks } from '@/lib/cache';
-import type { CachePayload, SyncResult } from '@/lib/types';
+import { buildPayload } from '@/lib/sync';
+import type { SyncResult } from '@/lib/types';
 
 async function performSync(): Promise<SyncResult> {
-  const start = Date.now();
-  const [rawTasks, statuses] = await Promise.all([
-    fetchFilteredTasks(INTAKE_STATUSES),
-    fetchListStatuses(),
-  ]);
-  let tasks = transformTasks(rawTasks);
-  const userId = getUserId();
-  if (userId) {
-    tasks = filterByUser(tasks, userId);
-  }
-  const syncDuration = Date.now() - start;
-
-  const payload: CachePayload = {
-    tasks,
-    statuses,
-    lastSynced: Date.now(),
-    syncDuration,
-    taskCount: tasks.length,
-  };
-
+  const payload = await buildPayload();
   await setCachedTasks(payload);
 
   return {
     success: true,
-    taskCount: tasks.length,
-    syncDuration,
+    taskCount: payload.taskCount,
+    syncDuration: payload.syncDuration,
   };
 }
 
