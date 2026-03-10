@@ -263,17 +263,12 @@ export async function fetchFolderlessLists(spaceId: string): Promise<ClickUpList
   return data.lists;
 }
 
-// Known AI OCM list IDs (fallback defaults)
-const DEFAULT_ROADSHOWS_LIST_ID = '4002434090786504621';
-const DEFAULT_WIDGET_LIST_ID = '4002410489845325279';
-const DEFAULT_UCOP_LIST_ID = '4002404055709439235';
-
 export function getAiOcmListOverrides(): Partial<AiOcmListMap> {
-  return {
-    roadshows: process.env.CLICKUP_ROADSHOWS_LIST_ID || DEFAULT_ROADSHOWS_LIST_ID,
-    widget: process.env.CLICKUP_WIDGET_LIST_ID || DEFAULT_WIDGET_LIST_ID,
-    ucopAiCouncil: process.env.CLICKUP_UCOP_LIST_ID || DEFAULT_UCOP_LIST_ID,
-  };
+  const result: Partial<AiOcmListMap> = {};
+  if (process.env.CLICKUP_ROADSHOWS_LIST_ID) result.roadshows = process.env.CLICKUP_ROADSHOWS_LIST_ID;
+  if (process.env.CLICKUP_WIDGET_LIST_ID) result.widget = process.env.CLICKUP_WIDGET_LIST_ID;
+  if (process.env.CLICKUP_UCOP_LIST_ID) result.ucopAiCouncil = process.env.CLICKUP_UCOP_LIST_ID;
+  return result;
 }
 
 export async function discoverAiOcmLists(): Promise<AiOcmListMap> {
