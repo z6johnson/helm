@@ -12,7 +12,7 @@ import {
 import { transformTasks, filterByUser } from './transform';
 import { inferAiOcmCategory } from './categorize';
 import { AI_OCM_CATEGORIES } from './types';
-import type { CachePayload, AiOcmListMap } from './types';
+import type { CachePayload, AiOcmListMap, ClickUpTask } from './types';
 
 // Module-level cache for discovered list IDs (survives across requests in the same process)
 let cachedListMap: AiOcmListMap | null = null;
@@ -25,10 +25,9 @@ async function getAiOcmLists(): Promise<AiOcmListMap> {
 }
 
 async function promoteAcceptedTasks(
+  acceptedRaw: ClickUpTask[],
   aiOcmLists: AiOcmListMap
 ): Promise<{ promoted: number; errors: number }> {
-  // Fetch tasks specifically in the "accepted" status
-  const acceptedRaw = await fetchFilteredTasks(['ai intake accepted']);
   let promoted = 0;
   let errors = 0;
 
@@ -69,6 +68,19 @@ async function promoteAcceptedTasks(
   return { promoted, errors };
 }
 
+async function fetchProgramsListSafe(
+  listId: string,
+  listName: string,
+  assigneeId?: number
+): Promise<ClickUpTask[]> {
+  try {
+    return await fetchTasksFromList(listId, assigneeId);
+  } catch (err) {
+    console.error(`[Helm] Failed to fetch ${listName} list (${listId}):`, err);
+    return [];
+  }
+}
+
 export async function buildPayload(): Promise<CachePayload> {
   const start = Date.now();
   const userId = getUserId();
@@ -81,10 +93,21 @@ export async function buildPayload(): Promise<CachePayload> {
     console.error('[Helm] Failed to discover AI OCM lists:', err);
   }
 
-  // Auto-promote accepted intake tasks before fetching
-  if (aiOcmLists) {
+  // Fetch ALL intake tasks (including accepted — they stay visible until successfully promoted)
+  const [intakeRaw, statuses] = await Promise.all([
+    fetchFilteredTasks(INTAKE_STATUSES),
+    fetchListStatuses(),
+  ]);
+
+  // Auto-promote accepted intake tasks
+  const acceptedRaw = intakeRaw.filter(
+    (t) => t.status.status.toLowerCase() === 'ai intake accepted'
+  );
+  const promotedIds = new Set<string>();
+
+  if (aiOcmLists && acceptedRaw.length > 0) {
     try {
-      const result = await promoteAcceptedTasks(aiOcmLists);
+      const result = await promoteAcceptedTasks(acceptedRaw, aiOcmLists);
       if (result.promoted > 0) {
         console.log(`[Helm] Promoted ${result.promoted} tasks (${result.errors} errors)`);
       }
@@ -93,54 +116,36 @@ export async function buildPayload(): Promise<CachePayload> {
     }
   }
 
-  // Fetch intake tasks (excluding "accepted" since those get promoted)
-  const intakeStatuses = INTAKE_STATUSES.filter(
-    (s) => s !== 'ai intake accepted'
-  );
-
-  // Build parallel fetch promises
-  const fetchPromises: Promise<unknown>[] = [
-    fetchFilteredTasks(intakeStatuses),
-    fetchListStatuses(),
-  ];
-
+  // Fetch Programs tasks (each list independently, so one failure doesn't break others)
+  let programsTasks = [] as ReturnType<typeof transformTasks>;
   if (aiOcmLists) {
-    fetchPromises.push(
-      fetchTasksFromList(aiOcmLists.roadshows, userId),
-      fetchTasksFromList(aiOcmLists.widget, userId),
-      fetchTasksFromList(aiOcmLists.ucopAiCouncil, userId),
-    );
+    const [roadshowsRaw, widgetRaw, ucopRaw] = await Promise.all([
+      fetchProgramsListSafe(aiOcmLists.roadshows, 'Roadshows', userId),
+      fetchProgramsListSafe(aiOcmLists.widget, 'Widget', userId),
+      fetchProgramsListSafe(aiOcmLists.ucopAiCouncil, 'UCOP AI Council', userId),
+    ]);
+
+    // Track promoted task IDs — if a task appears in Programs, remove from intake
+    for (const raw of [...roadshowsRaw, ...widgetRaw, ...ucopRaw]) {
+      promotedIds.add(raw.id);
+    }
+
+    programsTasks = [
+      ...transformTasks(roadshowsRaw, 'programs', 'Roadshows'),
+      ...transformTasks(widgetRaw, 'programs', 'Widget'),
+      ...transformTasks(ucopRaw, 'programs', 'UCOP AI Council'),
+    ];
   }
 
-  const results = await Promise.all(fetchPromises);
+  // Filter intake: exclude tasks that now live in Programs
+  const filteredIntakeRaw = promotedIds.size > 0
+    ? intakeRaw.filter((t) => !promotedIds.has(t.id))
+    : intakeRaw;
 
-  const intakeRaw = results[0] as Awaited<ReturnType<typeof fetchFilteredTasks>>;
-  const statuses = results[1] as Awaited<ReturnType<typeof fetchListStatuses>>;
-
-  let intakeTasks = transformTasks(intakeRaw, 'intake');
+  let intakeTasks = transformTasks(filteredIntakeRaw, 'intake');
   if (userId) {
     intakeTasks = filterByUser(intakeTasks, userId);
   }
-
-  let programsTasks = aiOcmLists
-    ? [
-        ...transformTasks(
-          results[2] as Awaited<ReturnType<typeof fetchTasksFromList>>,
-          'programs',
-          'Roadshows'
-        ),
-        ...transformTasks(
-          results[3] as Awaited<ReturnType<typeof fetchTasksFromList>>,
-          'programs',
-          'Widget'
-        ),
-        ...transformTasks(
-          results[4] as Awaited<ReturnType<typeof fetchTasksFromList>>,
-          'programs',
-          'UCOP AI Council'
-        ),
-      ]
-    : [];
 
   // Programs tasks are already filtered by assignee at the API level,
   // but apply user filter for creator-based matching too

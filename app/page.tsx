@@ -7,7 +7,11 @@ import { StatusBar } from '@/components/StatusBar';
 import { ToastProvider, useToast } from '@/components/Toast';
 import type { DashboardTask, CachePayload } from '@/lib/types';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`API error ${r.status}`);
+    return r.json();
+  });
 
 function countByStatus(tasks: DashboardTask[]) {
   let newCount = 0;
