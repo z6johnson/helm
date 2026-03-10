@@ -70,11 +70,10 @@ async function promoteAcceptedTasks(
 
 async function fetchProgramsListSafe(
   listId: string,
-  listName: string,
-  assigneeId?: number
+  listName: string
 ): Promise<ClickUpTask[]> {
   try {
-    return await fetchTasksFromList(listId, assigneeId);
+    return await fetchTasksFromList(listId);
   } catch (err) {
     console.error(`[Helm] Failed to fetch ${listName} list (${listId}):`, err);
     return [];
@@ -120,9 +119,9 @@ export async function buildPayload(): Promise<CachePayload> {
   let programsTasks = [] as ReturnType<typeof transformTasks>;
   if (aiOcmLists) {
     const [roadshowsRaw, widgetRaw, ucopRaw] = await Promise.all([
-      fetchProgramsListSafe(aiOcmLists.roadshows, 'Roadshows', userId),
-      fetchProgramsListSafe(aiOcmLists.widget, 'Widget', userId),
-      fetchProgramsListSafe(aiOcmLists.ucopAiCouncil, 'UCOP AI Council', userId),
+      fetchProgramsListSafe(aiOcmLists.roadshows, 'Roadshows'),
+      fetchProgramsListSafe(aiOcmLists.widget, 'Widget'),
+      fetchProgramsListSafe(aiOcmLists.ucopAiCouncil, 'UCOP AI Council'),
     ]);
 
     // Track promoted task IDs — if a task appears in Programs, remove from intake
@@ -145,12 +144,6 @@ export async function buildPayload(): Promise<CachePayload> {
   let intakeTasks = transformTasks(filteredIntakeRaw, 'intake');
   if (userId) {
     intakeTasks = filterByUser(intakeTasks, userId);
-  }
-
-  // Programs tasks are already filtered by assignee at the API level,
-  // but apply user filter for creator-based matching too
-  if (userId && programsTasks.length > 0) {
-    programsTasks = filterByUser(programsTasks, userId);
   }
 
   const allTasks = [...intakeTasks, ...programsTasks];
