@@ -110,13 +110,6 @@ export async function buildPayload(): Promise<CachePayload> {
       const result = await promoteAcceptedTasks(acceptedRaw, aiOcmLists);
       if (result.promoted > 0) {
         console.log(`[Helm] Promoted ${result.promoted} tasks (${result.errors} errors)`);
-        // Track which tasks were successfully promoted so we can exclude them from intake
-        // (they'll appear in the Programs lists on this or next sync)
-        for (const raw of acceptedRaw) {
-          // Re-check: only mark as promoted if the move actually succeeded
-          // Since promoteAcceptedTasks logs errors per-task, we approximate by
-          // counting: if promoted count matches, all succeeded
-        }
       }
     } catch (err) {
       console.error('[Helm] Promotion step failed:', err);
