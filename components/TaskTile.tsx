@@ -295,10 +295,18 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
     )
     .sort((a, b) => a.orderindex - b.orderindex);
 
+  const isPrograms = task.source === 'programs';
+  const sourceBadgeLabel = isPrograms ? (task.sourceList || 'Programs') : 'Intake';
+
   return (
     <div
       className="task-tile"
     >
+      {/* Source Badge */}
+      <span className={`task-tile__source-badge ${isPrograms ? 'task-tile__source-badge--programs' : ''}`}>
+        {sourceBadgeLabel}
+      </span>
+
       {/* Task Name */}
       <div className="task-tile__name-wrap">
         {editingName ? (
@@ -323,17 +331,21 @@ export function TaskTile({ task, statuses, onTaskUpdate }: TaskTileProps) {
 
       {/* Status + Due Date row */}
       <div className="task-tile__row">
-        <select
-          className="task-tile__status-select"
-          value={task.status}
-          onChange={handleStatusChange}
-        >
-          {intakeStatuses.map((s) => (
-            <option key={s.id} value={s.status}>
-              {s.status.replace(/^ai intake\s*/i, '')}
-            </option>
-          ))}
-        </select>
+        {isPrograms ? (
+          <span className="task-tile__status-text">{task.status}</span>
+        ) : (
+          <select
+            className="task-tile__status-select"
+            value={task.status}
+            onChange={handleStatusChange}
+          >
+            {intakeStatuses.map((s) => (
+              <option key={s.id} value={s.status}>
+                {s.status.replace(/^ai intake\s*/i, '')}
+              </option>
+            ))}
+          </select>
+        )}
         {editingDueDate ? (
           <input
             ref={dueDateInputRef}

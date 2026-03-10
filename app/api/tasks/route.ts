@@ -1,38 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCachedTasks, setCachedTasks } from '@/lib/cache';
-import { fetchFilteredTasks, fetchListStatuses, createTask, INTAKE_STATUSES, getUserId } from '@/lib/clickup';
-import { transformTasks, transformTask, filterByUser } from '@/lib/transform';
-import type { CachePayload } from '@/lib/types';
+import { createTask, getUserId } from '@/lib/clickup';
+import { transformTask } from '@/lib/transform';
+import { buildPayload } from '@/lib/sync';
 
 export async function GET() {
   try {
     // Try cache first
-    let cached = await getCachedTasks();
+    const cached = await getCachedTasks();
     if (cached) {
       return NextResponse.json(cached);
     }
 
-    // Cache miss — fetch live
-    const start = Date.now();
-    const [rawTasks, statuses] = await Promise.all([
-      fetchFilteredTasks(INTAKE_STATUSES),
-      fetchListStatuses(),
-    ]);
-    let tasks = transformTasks(rawTasks);
-    const userId = getUserId();
-    if (userId) {
-      tasks = filterByUser(tasks, userId);
-    }
-    const syncDuration = Date.now() - start;
-
-    const payload: CachePayload = {
-      tasks,
-      statuses,
-      lastSynced: Date.now(),
-      syncDuration,
-      taskCount: tasks.length,
-    };
-
+    // Cache miss — full sync
+    const payload = await buildPayload();
     await setCachedTasks(payload);
     return NextResponse.json(payload);
   } catch (error) {
@@ -63,13 +44,14 @@ export async function POST(request: NextRequest) {
     const description = typeof body.description === 'string' ? body.description : undefined;
     const customFields = Array.isArray(body.custom_fields) ? body.custom_fields : undefined;
     const raw = await createTask(body.name, status, assignees, dueDate, description, customFields);
-    const task = transformTask(raw);
+    const task = transformTask(raw, 'intake');
 
     // Add to cache
     const cached = await getCachedTasks();
     if (cached) {
       cached.tasks.push(task);
       cached.taskCount = cached.tasks.length;
+      cached.intakeCount = cached.tasks.filter((t) => t.source === 'intake').length;
       await setCachedTasks(cached);
     }
 

@@ -13,13 +13,18 @@ function countByStatus(tasks: DashboardTask[]) {
   let newCount = 0;
   let scoping = 0;
   let resourcing = 0;
+  let programs = 0;
   for (const t of tasks) {
+    if (t.source === 'programs') {
+      programs++;
+      continue;
+    }
     const s = t.status.toLowerCase();
     if (s.includes('new')) newCount++;
     else if (s.includes('scoping')) scoping++;
     else if (s.includes('resourcing')) resourcing++;
   }
-  return { new: newCount, scoping, resourcing };
+  return { new: newCount, scoping, resourcing, programs };
 }
 
 function DashboardInner() {
@@ -110,7 +115,7 @@ function DashboardInner() {
     return (
       <div className="dashboard">
         <header className="dashboard-header">
-          <h1>AI Strategy Intake</h1>
+          <h1>Helm</h1>
         </header>
         <div className="dashboard-body">
           <div className="task-grid">
@@ -133,7 +138,7 @@ function DashboardInner() {
     return (
       <div className="dashboard">
         <header className="dashboard-header">
-          <h1>AI Strategy Intake</h1>
+          <h1>Helm</h1>
         </header>
         <div className="dashboard-body">
           <div className="empty-state" style={{ flex: 1 }}>
@@ -157,7 +162,7 @@ function DashboardInner() {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>AI Strategy Intake</h1>
+        <h1>Helm</h1>
         <div className="header-actions">
           <div className="header-metrics">
             <span className="header-metric">
@@ -174,6 +179,15 @@ function DashboardInner() {
               <span className="header-metric__count">{counts.resourcing}</span>
               <span className="header-metric__label">Resourcing</span>
             </span>
+            {counts.programs > 0 && (
+              <>
+                <span className="header-metric__sep">|</span>
+                <span className="header-metric">
+                  <span className="header-metric__count">{counts.programs}</span>
+                  <span className="header-metric__label">Programs</span>
+                </span>
+              </>
+            )}
           </div>
           <button
             className="btn btn--primary"
@@ -197,6 +211,8 @@ function DashboardInner() {
       <StatusBar
         lastSynced={data?.lastSynced ?? null}
         taskCount={tasks.length}
+        intakeCount={data?.intakeCount}
+        programsCount={data?.programsCount}
         syncing={false}
         onSync={handleSync}
       />

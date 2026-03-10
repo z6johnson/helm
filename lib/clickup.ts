@@ -2,6 +2,7 @@ import type {
   ClickUpTask,
   ClickUpComment,
   ClickUpStatus,
+  AiOcmListMap,
 } from './types';
 
 const BASE_URL = 'https://api.clickup.com/api/v2';
@@ -205,4 +206,156 @@ export async function fetchListStatuses(): Promise<ClickUpStatus[]> {
     `/list/${listId}`
   );
   return data.statuses;
+}
+
+// === Programs / AI OCM Discovery ===
+
+interface ClickUpTeam {
+  id: string;
+  name: string;
+}
+
+interface ClickUpSpace {
+  id: string;
+  name: string;
+}
+
+interface ClickUpFolder {
+  id: string;
+  name: string;
+}
+
+interface ClickUpList {
+  id: string;
+  name: string;
+}
+
+export async function fetchTeams(): Promise<ClickUpTeam[]> {
+  const data = await clickupFetch<{ teams: ClickUpTeam[] }>('/team');
+  return data.teams;
+}
+
+export async function fetchSpaces(teamId: string): Promise<ClickUpSpace[]> {
+  const data = await clickupFetch<{ spaces: ClickUpSpace[] }>(
+    `/team/${teamId}/space`
+  );
+  return data.spaces;
+}
+
+export async function fetchFolders(spaceId: string): Promise<ClickUpFolder[]> {
+  const data = await clickupFetch<{ folders: ClickUpFolder[] }>(
+    `/space/${spaceId}/folder`
+  );
+  return data.folders;
+}
+
+export async function fetchLists(folderId: string): Promise<ClickUpList[]> {
+  const data = await clickupFetch<{ lists: ClickUpList[] }>(
+    `/folder/${folderId}/list`
+  );
+  return data.lists;
+}
+
+export async function fetchFolderlessLists(spaceId: string): Promise<ClickUpList[]> {
+  const data = await clickupFetch<{ lists: ClickUpList[] }>(
+    `/space/${spaceId}/list`
+  );
+  return data.lists;
+}
+
+export function getAiOcmListOverrides(): Partial<AiOcmListMap> {
+  const result: Partial<AiOcmListMap> = {};
+  if (process.env.CLICKUP_ROADSHOWS_LIST_ID) result.roadshows = process.env.CLICKUP_ROADSHOWS_LIST_ID;
+  if (process.env.CLICKUP_WIDGET_LIST_ID) result.widget = process.env.CLICKUP_WIDGET_LIST_ID;
+  if (process.env.CLICKUP_UCOP_LIST_ID) result.ucopAiCouncil = process.env.CLICKUP_UCOP_LIST_ID;
+  return result;
+}
+
+export async function discoverAiOcmLists(): Promise<AiOcmListMap> {
+  // Check env var overrides first
+  const overrides = getAiOcmListOverrides();
+  if (overrides.roadshows && overrides.widget && overrides.ucopAiCouncil) {
+    return overrides as AiOcmListMap;
+  }
+
+  // Walk ClickUp hierarchy: Teams → Spaces → Folders → Lists
+  const teams = await fetchTeams();
+  if (teams.length === 0) throw new Error('No ClickUp teams found');
+
+  // Search across all teams for the "Programs" space
+  let programsSpace: ClickUpSpace | undefined;
+  for (const team of teams) {
+    const spaces = await fetchSpaces(team.id);
+    programsSpace = spaces.find(
+      (s) => s.name.toLowerCase() === 'programs'
+    );
+    if (programsSpace) break;
+  }
+  if (!programsSpace) throw new Error('Could not find "Programs" space in ClickUp');
+
+  // Look for "AI OCM" folder
+  const folders = await fetchFolders(programsSpace.id);
+  const aiOcmFolder = folders.find(
+    (f) => f.name.toLowerCase().includes('ai ocm')
+  );
+
+  let lists: ClickUpList[];
+  if (aiOcmFolder) {
+    lists = await fetchLists(aiOcmFolder.id);
+  } else {
+    // Fallback: check folderless lists in the space
+    lists = await fetchFolderlessLists(programsSpace.id);
+  }
+
+  const findList = (name: string): string => {
+    const list = lists.find(
+      (l) => l.name.toLowerCase().includes(name.toLowerCase())
+    );
+    if (!list) throw new Error(`Could not find "${name}" list in AI OCM`);
+    return list.id;
+  };
+
+  return {
+    roadshows: overrides.roadshows || findList('Roadshows'),
+    widget: overrides.widget || findList('Widget'),
+    ucopAiCouncil: overrides.ucopAiCouncil || findList('UCOP AI Council'),
+  };
+}
+
+export async function fetchTasksFromList(
+  listId: string,
+  assigneeId?: number
+): Promise<ClickUpTask[]> {
+  const allTasks: ClickUpTask[] = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const params = new URLSearchParams();
+    params.append('subtasks', 'false');
+    params.append('page', String(page));
+    params.append('include_closed', 'false');
+    if (assigneeId) {
+      params.append('assignees[]', String(assigneeId));
+    }
+
+    const data = await clickupFetch<{ tasks: ClickUpTask[] }>(
+      `/list/${listId}/task?${params.toString()}`
+    );
+    allTasks.push(...data.tasks);
+    hasMore = data.tasks.length === 100;
+    page++;
+  }
+
+  return allTasks;
+}
+
+export async function moveTaskToList(
+  taskId: string,
+  targetListId: string
+): Promise<void> {
+  // ClickUp API: move task to a different list
+  await clickupFetch(`/list/${targetListId}/task/${taskId}`, {
+    method: 'POST',
+  });
 }
