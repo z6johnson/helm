@@ -9,7 +9,7 @@ import {
   INTAKE_STATUSES,
   getUserId,
 } from './clickup';
-import { transformTasks, filterByUser } from './transform';
+import { transformTasks, filterByUser, filterByAssignee } from './transform';
 import { inferAiOcmCategory } from './categorize';
 import { AI_OCM_CATEGORIES } from './types';
 import type { CachePayload, AiOcmListMap, ClickUpTask } from './types';
@@ -144,6 +144,11 @@ export async function buildPayload(): Promise<CachePayload> {
   let intakeTasks = transformTasks(filteredIntakeRaw, 'intake');
   if (userId) {
     intakeTasks = filterByUser(intakeTasks, userId);
+  }
+
+  // Programs tasks: filter to only tasks assigned to the configured user
+  if (userId && programsTasks.length > 0) {
+    programsTasks = filterByAssignee(programsTasks, userId);
   }
 
   const allTasks = [...intakeTasks, ...programsTasks];

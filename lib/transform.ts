@@ -28,6 +28,13 @@ export function filterByUser(
   );
 }
 
+export function filterByAssignee(
+  tasks: DashboardTask[],
+  userId: number
+): DashboardTask[] {
+  return tasks.filter((t) => t.assignees.some((a) => a.id === userId));
+}
+
 export function transformTask(
   raw: ClickUpTask,
   source: TaskSource = 'intake',
