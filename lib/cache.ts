@@ -1,4 +1,4 @@
-import type { CachePayload } from './types';
+import type { CachePayload, ManualMeasurements } from './types';
 
 const CACHE_KEY = 'helm:tasks';
 const CACHE_TTL = 25 * 60 * 60; // 25 hours in seconds
@@ -81,4 +81,45 @@ export async function getCacheMeta(): Promise<{
     lastSynced: cached.lastSynced,
     taskCount: cached.taskCount,
   };
+}
+
+// === Measurement Data (persistent, no TTL) ===
+
+function measurementKey(quarter: string): string {
+  return `helm:measurements:${quarter}`;
+}
+
+export async function getManualMeasurements(
+  quarter: string
+): Promise<ManualMeasurements | null> {
+  const kv = await getKV();
+  const key = measurementKey(quarter);
+
+  if (kv) {
+    return kv.get<ManualMeasurements>(key);
+  }
+
+  const cache = getDevCache();
+  const entry = cache.get(key);
+  if (!entry) return null;
+  return entry.value as ManualMeasurements;
+}
+
+export async function setManualMeasurements(
+  quarter: string,
+  data: ManualMeasurements
+): Promise<void> {
+  const kv = await getKV();
+  const key = measurementKey(quarter);
+
+  if (kv) {
+    await kv.set(key, data);
+    return;
+  }
+
+  const cache = getDevCache();
+  cache.set(key, {
+    value: data,
+    expires: Infinity,
+  });
 }
