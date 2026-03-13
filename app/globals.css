@@ -1006,9 +1006,10 @@ body {
 
 .header-nav {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--u1);
-  margin-left: var(--u6);
+  padding: 0 var(--grid-padding);
 }
 
 .header-nav__tab {
