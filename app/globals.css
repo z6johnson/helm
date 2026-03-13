@@ -1006,7 +1006,7 @@ body {
 
 .header-nav {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   gap: var(--u1);
   padding: 0 var(--grid-padding);
