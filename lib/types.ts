@@ -179,3 +179,41 @@ export const DISPLAY_FIELD_IDS = [
   FIELD_IDS.OBJECTIVES,
   FIELD_IDS.ADDITIONAL_INFO,
 ];
+
+// === Measurement Framework Types ===
+
+export type Quarter = string; // format: "YYYY-QN", e.g. "2026-Q1"
+
+export interface MeasurementIndicator {
+  key: string;
+  label: string;
+  value: number | null;
+  source: 'clickup' | 'manual';
+  type: 'leading' | 'lagging';
+  unit: string;
+}
+
+export interface DimensionAlignment {
+  advances: string;
+  strategicPlan: string;
+  ucPrinciple: string;
+}
+
+export interface MeasurementDimension {
+  id: string;
+  title: string;
+  subtitle: string;
+  leading: MeasurementIndicator[];
+  lagging: MeasurementIndicator[];
+  alignment: DimensionAlignment[];
+}
+
+export interface MeasurementPayload {
+  quarter: Quarter;
+  dimensions: MeasurementDimension[];
+  lastUpdated: number | null;
+}
+
+export interface ManualMeasurements {
+  [indicatorKey: string]: number | null;
+}

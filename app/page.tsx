@@ -3,9 +3,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import useSWR from 'swr';
 import { TaskGrid } from '@/components/TaskGrid';
+import { CommandDashboard } from '@/components/CommandDashboard';
 import { StatusBar } from '@/components/StatusBar';
 import { ToastProvider, useToast } from '@/components/Toast';
-import type { DashboardTask, CachePayload } from '@/lib/types';
+import { getCurrentQuarter } from '@/lib/measurements';
+import type { DashboardTask, CachePayload, Quarter } from '@/lib/types';
+
+type View = 'control' | 'command';
 
 const fetcher = (url: string) =>
   fetch(url).then((r) => {
@@ -31,7 +35,28 @@ function countByStatus(tasks: DashboardTask[]) {
   return { new: newCount, scoping, resourcing, programs };
 }
 
+function HeaderNav({ view, onViewChange }: { view: View; onViewChange: (v: View) => void }) {
+  return (
+    <nav className="header-nav">
+      <button
+        className={`header-nav__tab ${view === 'control' ? 'header-nav__tab--active' : ''}`}
+        onClick={() => onViewChange('control')}
+      >
+        Control
+      </button>
+      <button
+        className={`header-nav__tab ${view === 'command' ? 'header-nav__tab--active' : ''}`}
+        onClick={() => onViewChange('command')}
+      >
+        Command
+      </button>
+    </nav>
+  );
+}
+
 function DashboardInner() {
+  const [view, setView] = useState<View>('control');
+  const [quarter, setQuarter] = useState<Quarter>(getCurrentQuarter());
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { showToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR<CachePayload>(
@@ -103,30 +128,38 @@ function DashboardInner() {
           (e.target as HTMLElement)?.isContentEditable) {
         return;
       }
-      if (e.key === 'n' || e.key === 'N') {
+      if (e.key === '1') {
+        setView('control');
+      } else if (e.key === '2') {
+        setView('command');
+      } else if (view === 'control' && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
         setShowCreateForm(true);
-      }
-      if (e.key === 'Escape') {
+      } else if (e.key === 'Escape') {
         setShowCreateForm(false);
       }
     }
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [view]);
 
   if (isLoading) {
     return (
       <div className="dashboard">
         <header className="dashboard-header">
           <h1>Helm</h1>
+          <HeaderNav view={view} onViewChange={setView} />
         </header>
         <div className="dashboard-body">
-          <div className="task-grid">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: 200 }} />
-            ))}
-          </div>
+          {view === 'control' ? (
+            <div className="task-grid">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ height: 200 }} />
+              ))}
+            </div>
+          ) : (
+            <CommandDashboard quarter={quarter} onQuarterChange={setQuarter} />
+          )}
         </div>
         <StatusBar
           lastSynced={null}
@@ -143,11 +176,16 @@ function DashboardInner() {
       <div className="dashboard">
         <header className="dashboard-header">
           <h1>Helm</h1>
+          <HeaderNav view={view} onViewChange={setView} />
         </header>
         <div className="dashboard-body">
-          <div className="empty-state" style={{ flex: 1 }}>
-            Failed to load tasks. Check your connection and try again.
-          </div>
+          {view === 'control' ? (
+            <div className="empty-state" style={{ flex: 1 }}>
+              Failed to load tasks. Check your connection and try again.
+            </div>
+          ) : (
+            <CommandDashboard quarter={quarter} onQuarterChange={setQuarter} />
+          )}
         </div>
         <StatusBar
           lastSynced={null}
@@ -167,50 +205,57 @@ function DashboardInner() {
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>Helm</h1>
-        <div className="header-actions">
-          <div className="header-metrics">
-            <span className="header-metric">
-              <span className="header-metric__count">{counts.new}</span>
-              <span className="header-metric__label">New</span>
-            </span>
-            <span className="header-metric__sep">&middot;</span>
-            <span className="header-metric">
-              <span className="header-metric__count">{counts.scoping}</span>
-              <span className="header-metric__label">Scoping</span>
-            </span>
-            <span className="header-metric__sep">&middot;</span>
-            <span className="header-metric">
-              <span className="header-metric__count">{counts.resourcing}</span>
-              <span className="header-metric__label">Resourcing</span>
-            </span>
-            {counts.programs > 0 && (
-              <>
-                <span className="header-metric__sep">|</span>
-                <span className="header-metric">
-                  <span className="header-metric__count">{counts.programs}</span>
-                  <span className="header-metric__label">Programs</span>
-                </span>
-              </>
-            )}
+        <HeaderNav view={view} onViewChange={setView} />
+        {view === 'control' && (
+          <div className="header-actions">
+            <div className="header-metrics">
+              <span className="header-metric">
+                <span className="header-metric__count">{counts.new}</span>
+                <span className="header-metric__label">New</span>
+              </span>
+              <span className="header-metric__sep">&middot;</span>
+              <span className="header-metric">
+                <span className="header-metric__count">{counts.scoping}</span>
+                <span className="header-metric__label">Scoping</span>
+              </span>
+              <span className="header-metric__sep">&middot;</span>
+              <span className="header-metric">
+                <span className="header-metric__count">{counts.resourcing}</span>
+                <span className="header-metric__label">Resourcing</span>
+              </span>
+              {counts.programs > 0 && (
+                <>
+                  <span className="header-metric__sep">|</span>
+                  <span className="header-metric">
+                    <span className="header-metric__count">{counts.programs}</span>
+                    <span className="header-metric__label">Programs</span>
+                  </span>
+                </>
+              )}
+            </div>
+            <button
+              className="btn btn--primary"
+              onClick={() => setShowCreateForm(true)}
+              disabled={showCreateForm}
+            >
+              + New Task
+            </button>
           </div>
-          <button
-            className="btn btn--primary"
-            onClick={() => setShowCreateForm(true)}
-            disabled={showCreateForm}
-          >
-            + New Task
-          </button>
-        </div>
+        )}
       </header>
       <div className="dashboard-body">
-        <TaskGrid
-          tasks={tasks}
-          statuses={statuses}
-          showCreateForm={showCreateForm}
-          onTaskUpdate={handleTaskUpdate}
-          onCreateTask={handleCreateTask}
-          onCancelCreate={() => setShowCreateForm(false)}
-        />
+        {view === 'control' ? (
+          <TaskGrid
+            tasks={tasks}
+            statuses={statuses}
+            showCreateForm={showCreateForm}
+            onTaskUpdate={handleTaskUpdate}
+            onCreateTask={handleCreateTask}
+            onCancelCreate={() => setShowCreateForm(false)}
+          />
+        ) : (
+          <CommandDashboard quarter={quarter} onQuarterChange={setQuarter} />
+        )}
       </div>
       <StatusBar
         lastSynced={data?.lastSynced ?? null}
