@@ -198,7 +198,6 @@ body {
   display: flex;
   align-items: center;
   gap: var(--u1);
-  padding: var(--u4) var(--u8) 0;
 }
 
 .filter-bar__tab {
@@ -1004,12 +1003,17 @@ body {
 
 /* === Header Navigation === */
 
+.sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--u2) var(--grid-padding);
+}
+
 .header-nav {
   display: flex;
-  justify-content: flex-start;
   align-items: center;
   gap: var(--u1);
-  padding: 0 var(--grid-padding);
 }
 
 .header-nav__tab {
@@ -1053,7 +1057,7 @@ body {
 }
 
 .command-quarter__label {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
@@ -1095,7 +1099,7 @@ body {
 }
 
 .command-dimension__title {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-feed);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
   color: var(--color-black);
@@ -1103,7 +1107,7 @@ body {
 }
 
 .command-dimension__subtitle {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: var(--weight-light);
   font-style: italic;
   color: var(--color-gray-500);
@@ -1125,7 +1129,7 @@ body {
 }
 
 .command-indicators__heading {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
@@ -1177,14 +1181,14 @@ body {
 }
 
 .command-indicator__label {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: var(--weight-normal);
   color: var(--color-gray-600);
   letter-spacing: var(--tracking-wide);
 }
 
 .command-indicator__badge {
-  font-size: 9px;
+  font-size: var(--font-size-xs);
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
@@ -1203,7 +1207,7 @@ body {
 }
 
 .command-alignment__item {
-  font-size: 9px;
+  font-size: var(--font-size-xs);
   font-weight: var(--weight-light);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
