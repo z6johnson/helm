@@ -39,16 +39,16 @@ function HeaderNav({ view, onViewChange }: { view: View; onViewChange: (v: View)
   return (
     <nav className="header-nav">
       <button
-        className={`header-nav__tab ${view === 'control' ? 'header-nav__tab--active' : ''}`}
-        onClick={() => onViewChange('control')}
-      >
-        Control
-      </button>
-      <button
         className={`header-nav__tab ${view === 'command' ? 'header-nav__tab--active' : ''}`}
         onClick={() => onViewChange('command')}
       >
         Command
+      </button>
+      <button
+        className={`header-nav__tab ${view === 'control' ? 'header-nav__tab--active' : ''}`}
+        onClick={() => onViewChange('control')}
+      >
+        Control
       </button>
     </nav>
   );
@@ -148,8 +148,8 @@ function DashboardInner() {
       <div className="dashboard">
         <header className="dashboard-header">
           <h1>Helm</h1>
-          <HeaderNav view={view} onViewChange={setView} />
         </header>
+        <HeaderNav view={view} onViewChange={setView} />
         <div className="dashboard-body">
           {view === 'control' ? (
             <div className="task-grid">
@@ -176,8 +176,8 @@ function DashboardInner() {
       <div className="dashboard">
         <header className="dashboard-header">
           <h1>Helm</h1>
-          <HeaderNav view={view} onViewChange={setView} />
         </header>
+        <HeaderNav view={view} onViewChange={setView} />
         <div className="dashboard-body">
           {view === 'control' ? (
             <div className="empty-state" style={{ flex: 1 }}>
@@ -205,7 +205,6 @@ function DashboardInner() {
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>Helm</h1>
-        <HeaderNav view={view} onViewChange={setView} />
         {view === 'control' && (
           <div className="header-actions">
             <div className="header-metrics">
@@ -243,6 +242,7 @@ function DashboardInner() {
           </div>
         )}
       </header>
+      <HeaderNav view={view} onViewChange={setView} />
       <div className="dashboard-body">
         {view === 'control' ? (
           <TaskGrid
