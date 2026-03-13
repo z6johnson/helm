@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback } from 'react';
 import useSWR from 'swr';
 import type { Quarter, MeasurementPayload, MeasurementIndicator, MeasurementDimension } from '@/lib/types';
-import { formatQuarterLabel, getAvailableQuarters } from '@/lib/measurements';
 import { useToast } from '@/components/Toast';
 
 const fetcher = (url: string) =>
@@ -149,26 +148,14 @@ function DimensionSection({
 
 export function CommandDashboard({
   quarter,
-  onQuarterChange,
 }: {
   quarter: Quarter;
-  onQuarterChange: (q: Quarter) => void;
 }) {
   const { data, isLoading, mutate } = useSWR<MeasurementPayload>(
     `/api/measurements?quarter=${quarter}`,
     fetcher,
     { revalidateOnFocus: false }
   );
-
-  const quarters = getAvailableQuarters();
-  const currentIndex = quarters.indexOf(quarter);
-
-  const handlePrev = () => {
-    if (currentIndex > 0) onQuarterChange(quarters[currentIndex - 1]);
-  };
-  const handleNext = () => {
-    if (currentIndex < quarters.length - 1) onQuarterChange(quarters[currentIndex + 1]);
-  };
 
   const handleSaved = useCallback(() => {
     mutate();
@@ -177,11 +164,6 @@ export function CommandDashboard({
   if (isLoading || !data) {
     return (
       <div className="command-dashboard">
-        <div className="command-quarter-row">
-          <span className="command-quarter__label">
-            {formatQuarterLabel(quarter)}
-          </span>
-        </div>
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 180, marginBottom: 24 }} />
         ))}
@@ -191,25 +173,6 @@ export function CommandDashboard({
 
   return (
     <div className="command-dashboard">
-      <div className="command-quarter-row">
-        <button
-          className="command-quarter__arrow"
-          onClick={handlePrev}
-          disabled={currentIndex <= 0}
-        >
-          &larr;
-        </button>
-        <span className="command-quarter__label">
-          {formatQuarterLabel(quarter)}
-        </span>
-        <button
-          className="command-quarter__arrow"
-          onClick={handleNext}
-          disabled={currentIndex >= quarters.length - 1}
-        >
-          &rarr;
-        </button>
-      </div>
       {data.dimensions.map((dim) => (
         <DimensionSection
           key={dim.id}

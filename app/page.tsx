@@ -6,8 +6,10 @@ import { TaskGrid } from '@/components/TaskGrid';
 import { CommandDashboard } from '@/components/CommandDashboard';
 import { StatusBar } from '@/components/StatusBar';
 import { ToastProvider, useToast } from '@/components/Toast';
-import { getCurrentQuarter } from '@/lib/measurements';
+import { getCurrentQuarter, getAvailableQuarters, formatQuarterLabel } from '@/lib/measurements';
 import type { DashboardTask, CachePayload, Quarter } from '@/lib/types';
+
+type SourceFilter = 'all' | 'intake' | 'programs';
 
 type View = 'control' | 'command';
 
@@ -57,7 +59,17 @@ function HeaderNav({ view, onViewChange }: { view: View; onViewChange: (v: View)
 function DashboardInner() {
   const [view, setView] = useState<View>('control');
   const [quarter, setQuarter] = useState<Quarter>(getCurrentQuarter());
+  const [filter, setFilter] = useState<SourceFilter>('all');
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const quarters = getAvailableQuarters();
+  const currentQIndex = quarters.indexOf(quarter);
+  const handlePrevQ = () => {
+    if (currentQIndex > 0) setQuarter(quarters[currentQIndex - 1]);
+  };
+  const handleNextQ = () => {
+    if (currentQIndex < quarters.length - 1) setQuarter(quarters[currentQIndex + 1]);
+  };
   const { showToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR<CachePayload>(
     '/api/tasks',
@@ -149,7 +161,18 @@ function DashboardInner() {
         <header className="dashboard-header">
           <h1>Helm</h1>
         </header>
-        <HeaderNav view={view} onViewChange={setView} />
+        <div className="sub-header">
+          <div>
+            {view === 'command' && (
+              <div className="command-quarter-row">
+                <span className="command-quarter__label">
+                  {formatQuarterLabel(quarter)}
+                </span>
+              </div>
+            )}
+          </div>
+          <HeaderNav view={view} onViewChange={setView} />
+        </div>
         <div className="dashboard-body">
           {view === 'control' ? (
             <div className="task-grid">
@@ -158,7 +181,7 @@ function DashboardInner() {
               ))}
             </div>
           ) : (
-            <CommandDashboard quarter={quarter} onQuarterChange={setQuarter} />
+            <CommandDashboard quarter={quarter} />
           )}
         </div>
         <StatusBar
@@ -177,14 +200,25 @@ function DashboardInner() {
         <header className="dashboard-header">
           <h1>Helm</h1>
         </header>
-        <HeaderNav view={view} onViewChange={setView} />
+        <div className="sub-header">
+          <div>
+            {view === 'command' && (
+              <div className="command-quarter-row">
+                <button className="command-quarter__arrow" onClick={handlePrevQ} disabled={currentQIndex <= 0}>&larr;</button>
+                <span className="command-quarter__label">{formatQuarterLabel(quarter)}</span>
+                <button className="command-quarter__arrow" onClick={handleNextQ} disabled={currentQIndex >= quarters.length - 1}>&rarr;</button>
+              </div>
+            )}
+          </div>
+          <HeaderNav view={view} onViewChange={setView} />
+        </div>
         <div className="dashboard-body">
           {view === 'control' ? (
             <div className="empty-state" style={{ flex: 1 }}>
               Failed to load tasks. Check your connection and try again.
             </div>
           ) : (
-            <CommandDashboard quarter={quarter} onQuarterChange={setQuarter} />
+            <CommandDashboard quarter={quarter} />
           )}
         </div>
         <StatusBar
@@ -242,11 +276,44 @@ function DashboardInner() {
           </div>
         )}
       </header>
-      <HeaderNav view={view} onViewChange={setView} />
+      <div className="sub-header">
+        <div>
+          {view === 'control' ? (
+            <div className="filter-bar">
+              <button
+                className={`filter-bar__tab ${filter === 'all' ? 'filter-bar__tab--active' : ''}`}
+                onClick={() => setFilter('all')}
+              >
+                All <span className="filter-bar__count">{tasks.length}</span>
+              </button>
+              <button
+                className={`filter-bar__tab ${filter === 'intake' ? 'filter-bar__tab--active' : ''}`}
+                onClick={() => setFilter('intake')}
+              >
+                Intake <span className="filter-bar__count">{tasks.filter((t) => t.source === 'intake').length}</span>
+              </button>
+              <button
+                className={`filter-bar__tab ${filter === 'programs' ? 'filter-bar__tab--active' : ''}`}
+                onClick={() => setFilter('programs')}
+              >
+                Programs <span className="filter-bar__count">{tasks.filter((t) => t.source === 'programs').length}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="command-quarter-row">
+              <button className="command-quarter__arrow" onClick={handlePrevQ} disabled={currentQIndex <= 0}>&larr;</button>
+              <span className="command-quarter__label">{formatQuarterLabel(quarter)}</span>
+              <button className="command-quarter__arrow" onClick={handleNextQ} disabled={currentQIndex >= quarters.length - 1}>&rarr;</button>
+            </div>
+          )}
+        </div>
+        <HeaderNav view={view} onViewChange={setView} />
+      </div>
       <div className="dashboard-body">
         {view === 'control' ? (
           <TaskGrid
             tasks={tasks}
+            filter={filter}
             statuses={statuses}
             showCreateForm={showCreateForm}
             onTaskUpdate={handleTaskUpdate}
@@ -254,7 +321,7 @@ function DashboardInner() {
             onCancelCreate={() => setShowCreateForm(false)}
           />
         ) : (
-          <CommandDashboard quarter={quarter} onQuarterChange={setQuarter} />
+          <CommandDashboard quarter={quarter} />
         )}
       </div>
       <StatusBar
